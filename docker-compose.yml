@@ -1,0 +1,47 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: openbiz
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./infra/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+
+  scraper:
+    build: ./scraper
+    restart: "no"
+    depends_on:
+      - db
+    volumes:
+      - data-volume:/data
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/openbiz
+      SCHEMA_PATH: /data/schema.json
+    depends_on:
+      - db
+      - scraper
+    volumes:
+      - data-volume:/data
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build: ./frontend
+    environment:
+      NEXT_PUBLIC_BACKEND_URL: http://backend:8000
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+
+volumes:
+  db-data:
+  data-volume:
